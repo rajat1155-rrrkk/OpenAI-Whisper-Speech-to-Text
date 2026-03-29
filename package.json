@@ -6,17 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "local-whisper": "python3 scripts/local_whisper_server.py",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "apk:github": "echo \"APK builds run through GitHub Actions in .github/workflows/android-apk.yml\""
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@capacitor/android": "^7.4.2",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "next": "^15.3.0",
-    "openai": "^5.12.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

@@ -1,17 +1,17 @@
 # OpenAI Whisper Speech to Text
 
-A fresh browser-based speech-to-text project that supports:
+A browser-based speech-to-text project that runs Whisper-style transcription directly on the device.
 
-- `OpenAI API` transcription for local use and Vercel deployment
-- `Local Whisper` transcription using the open-source [`openai/whisper`](https://github.com/openai/whisper) package on your machine
+- No local server
+- No app-owned transcription API
+- Browser and mobile-webview friendly local processing
 - Android packaging through Capacitor
 - GitHub Actions APK builds
 
 ## Stack
 
 - Next.js App Router
-- OpenAI Node SDK
-- Local Python bridge for `openai-whisper`
+- `@huggingface/transformers` for in-browser ASR
 - Capacitor for Android packaging
 - Vercel for deployment
 
@@ -23,54 +23,26 @@ A fresh browser-based speech-to-text project that supports:
    npm install
    ```
 
-2. Create your local env file:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Add `OPENAI_API_KEY` in `.env.local`.
-
-4. Start the web app:
+2. Start the web app:
 
    ```bash
    npm run dev
    ```
 
-5. Open `http://localhost:3000`.
-
-## Running the local Whisper server
-
-This uses the open-source Whisper package from the official GitHub project.
-
-1. Create a virtual environment and install Python deps:
-
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. Start the local server:
-
-   ```bash
-   npm run local-whisper
-   ```
-
-3. In the browser UI, switch mode to `Local Whisper server`.
+3. Open `http://localhost:3000`.
 
 Notes:
 
-- The first run may download model weights.
-- `ffmpeg` is typically required by Whisper for broad audio format support.
-- For Vercel, use the default `OpenAI API / Vercel-ready` mode.
+- The first run may download model weights into the browser cache.
+- After the model is cached on a device, repeat use can work without calling your own backend API.
+- Mobile devices can use the same on-device/browser-side path inside the Capacitor app.
 
 ## Deploying to Vercel
 
 1. Import this repository into Vercel.
-2. Add the environment variable `OPENAI_API_KEY`.
-3. Optionally add `OPENAI_TRANSCRIPTION_MODEL`.
-4. Deploy.
+2. Deploy.
+
+This project is exported as a static site, so Vercel does not need any transcription env vars.
 
 ## Android APK
 
@@ -84,8 +56,8 @@ This repo includes:
 If you have Android Studio, Java, and the Android SDK installed:
 
 ```bash
-npx cap add android
-CAP_SERVER_URL=https://your-vercel-app.vercel.app npx cap sync android
+npm run build
+npx cap sync android
 npx cap open android
 ```
 
@@ -98,11 +70,7 @@ After pushing the repo to GitHub:
 1. Open the `Actions` tab.
 2. Run the `Android APK` workflow.
 3. Download the generated `app-debug.apk` artifact.
-4. Before running it, add a repository secret named `CAP_SERVER_URL` that points to your deployed Vercel app URL.
 
-## Important architecture note
+## Architecture note
 
-Vercel cannot practically host the open-source Whisper model runtime from `openai/whisper` as part of this lightweight app. This project therefore supports two modes:
-
-- `OpenAI API`: production-friendly and deployable on Vercel
-- `Local Whisper`: development-friendly and powered by the official open-source Whisper package on your own machine
+This app does not rely on your own API for speech-to-text. The transcription runs in the browser layer using a lightweight local model. The main limitation is that the first run may still need internet access to fetch model assets unless you later decide to bundle larger model files directly into the app package.
