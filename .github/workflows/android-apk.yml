@@ -1,0 +1,50 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      CAP_SERVER_URL: ${{ secrets.CAP_SERVER_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate remote app URL
+        run: |
+          if [ -z "$CAP_SERVER_URL" ]; then
+            echo "Missing CAP_SERVER_URL secret. Set it to your Vercel deployment URL before building the APK."
+            exit 1
+          fi
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openai-whisper-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

@@ -1,0 +1,29 @@
+{
+  "name": "openai-whisper-speech-to-text",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "local-whisper": "python3 scripts/local_whisper_server.py",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "apk:github": "echo \"APK builds run through GitHub Actions in .github/workflows/android-apk.yml\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "next": "^15.3.0",
+    "openai": "^5.12.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.9.2"
+  }
+}
