@@ -41,16 +41,10 @@ async function decodeAudio(file: File) {
 }
 
 export default function HomePage() {
-  const [deviceType, setDeviceType] = useState<"desktop-web" | "mobile-web">("desktop-web");
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState(
-    "This build runs Whisper directly in the browser. First use may take time while the model downloads."
-  );
+  const [status, setStatus] = useState("Tap the mic and start speaking.");
   const [transcript, setTranscript] = useState("");
-  const [selectedFileName, setSelectedFileName] = useState("");
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [modelReady, setModelReady] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -59,9 +53,6 @@ export default function HomePage() {
   const pipelinePromiseRef = useRef<Promise<WhisperPipeline> | null>(null);
 
   useEffect(() => {
-    const userAgent = navigator.userAgent || "";
-    setDeviceType(/Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) ? "mobile-web" : "desktop-web");
-
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -79,18 +70,15 @@ export default function HomePage() {
               progress && typeof progress.progress === "number"
                 ? Math.max(0, Math.min(100, Math.round(progress.progress * 100)))
                 : 0;
-            setDownloadProgress(percent);
+
             setStatus(
               percent > 0
-                ? `Preparing offline Whisper model (${percent}%).`
-                : "Preparing offline Whisper model."
+                ? `Downloading model ${percent}%`
+                : "Preparing speech model"
             );
           }
         })) as WhisperPipeline;
 
-        setModelReady(true);
-        setDownloadProgress(100);
-        setStatus("Offline Whisper model is ready.");
         return transcriber;
       });
     }
@@ -100,12 +88,10 @@ export default function HomePage() {
 
   async function transcribeFile(file: File) {
     setIsSubmitting(true);
-    setStatus("Decoding audio in the browser...");
+    setStatus("Processing audio...");
 
     try {
       const waveform = await decodeAudio(file);
-      setStatus("Running offline Whisper transcription...");
-
       const transcriber = await getTranscriber();
       const result = await transcriber(waveform, {
         chunk_length_s: 20,
@@ -114,13 +100,9 @@ export default function HomePage() {
 
       const text = result.text?.trim() || "";
       setTranscript(text);
-      setStatus(text ? "Offline transcription complete." : "No speech was detected.");
+      setStatus(text ? "Done" : "No speech detected");
     } catch (error) {
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : "Offline transcription failed on this device/browser."
-      );
+      setStatus(error instanceof Error ? error.message : "Transcription failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,16 +125,15 @@ export default function HomePage() {
       recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         const file = blobToFile(blob, `recording-${Date.now()}.webm`);
-        setSelectedFileName(file.name);
         await transcribeFile(file);
       };
 
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-      setStatus("Recording in progress...");
+      setStatus("Listening...");
     } catch {
-      setStatus("Microphone access was denied or unavailable.");
+      setStatus("Microphone access denied");
     }
   }
 
@@ -161,7 +142,7 @@ export default function HomePage() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setIsRecording(false);
-    setStatus("Processing your recording locally...");
+    setStatus("Finishing recording...");
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -170,7 +151,6 @@ export default function HomePage() {
       return;
     }
 
-    setSelectedFileName(file.name);
     await transcribeFile(file);
   }
 
@@ -180,118 +160,55 @@ export default function HomePage() {
     }
 
     await navigator.clipboard.writeText(transcript);
-    setStatus("Transcript copied to clipboard.");
+    setStatus("Copied");
   }
 
   return (
     <main className="shell">
-      <div className="frame">
-        <section className="hero">
-          <span className="eyebrow">Offline Whisper</span>
-          <h1>Speech to text, directly on the device.</h1>
-          <p>
-            This version bundles a browser-based Whisper pipeline so the app can run without any
-            backend API. The homepage detects whether it is running on mobile or desktop, but both
-            paths still transcribe locally on the device.
-          </p>
-        </section>
+      <div className="minimal">
+        <button
+          className={`mic ${isRecording ? "active" : ""}`}
+          disabled={isSubmitting}
+          onClick={isRecording ? stopRecording : startRecording}
+          aria-label={isRecording ? "Stop recording" : "Start recording"}
+        >
+          {isRecording ? "Stop" : "Mic"}
+        </button>
 
-        <section className="grid">
-          <div className="card stack">
-            <div className="controls">
-              {!isRecording ? (
-                <button className="button" disabled={isSubmitting} onClick={startRecording}>
-                  Record in browser
-                </button>
-              ) : (
-                <button className="button" onClick={stopRecording}>
-                  Stop recording
-                </button>
-              )}
+        <input
+          ref={fileInputRef}
+          hidden
+          accept={ACCEPTED_AUDIO}
+          type="file"
+          onChange={handleFileChange}
+        />
 
-              <button
-                className="button secondary"
-                disabled={isSubmitting}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Upload audio
-              </button>
+        <textarea
+          className="minimal-textarea"
+          value={transcript}
+          onChange={(event) => setTranscript(event.target.value)}
+          placeholder="Transcript"
+        />
 
-              <button
-                className="button secondary"
-                disabled={!transcript}
-                onClick={copyTranscript}
-              >
-                Copy transcript
-              </button>
-            </div>
+        <div className="minimal-actions">
+          <button
+            className="button secondary"
+            disabled={isSubmitting}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Upload
+          </button>
 
-            <input
-              ref={fileInputRef}
-              hidden
-              accept={ACCEPTED_AUDIO}
-              type="file"
-              onChange={handleFileChange}
-            />
+          <button
+            className="button"
+            disabled={!transcript}
+            onClick={copyTranscript}
+          >
+            Copy text
+          </button>
+        </div>
 
-            <div className="status">{status}</div>
-
-            <div className="stack">
-              <label htmlFor="transcript">Transcript</label>
-              <textarea
-                id="transcript"
-                className="textarea"
-                value={transcript}
-                onChange={(event) => setTranscript(event.target.value)}
-                placeholder="Your transcript will appear here."
-              />
-            </div>
-          </div>
-
-          <aside className="card stack">
-            <div className="meta">
-              <strong>Current selection</strong>
-              <span>{selectedFileName || "No file selected yet"}</span>
-            </div>
-
-            <div className="pill-row">
-              <span className="pill">No backend API</span>
-              <span className="pill">Static export ready</span>
-              <span className="pill">Capacitor-ready</span>
-              <span className="pill">Vercel-friendly</span>
-            </div>
-
-            <div className="meta">
-              <strong>Detected runtime</strong>
-              <span>{deviceType === "mobile-web" ? "Mobile device" : "Desktop browser"}</span>
-            </div>
-
-            <div className="meta">
-              <strong>Model</strong>
-              <span>{MODEL_ID}</span>
-            </div>
-
-            <div className="meta">
-              <strong>Model status</strong>
-              <span>{modelReady ? "Ready" : `Preparing or not yet loaded (${downloadProgress}%)`}</span>
-            </div>
-
-            <div className="meta">
-              <strong>Important note</strong>
-              <span>
-                The app does not call your own API, but the first run may need internet access to
-                download the Whisper model files into the browser cache. After the model is cached,
-                repeat use on the same device can work offline.
-              </span>
-            </div>
-          </aside>
-        </section>
-
-        <p className="footer-note">
-          The bundled model is optimized for a lightweight footprint. Accuracy and language support
-          are more limited than larger Whisper variants, but it is far easier to run inside a web
-          view and Android wrapper.
-        </p>
+        <p className="minimal-status">{status}</p>
       </div>
     </main>
   );
